@@ -3,36 +3,32 @@ import { analyzeRisk } from "../agents/riskAgent.js";
 import { analyzeSecurity } from "../agents/securityAgent.js";
 import { analyzePerformance } from "../agents/performanceAgent.js";
 import { analyzeStyle } from "../agents/styleAgent.js";
+import { generateTests } from "../agents/testCaseAgent.js";
+
+function safeRun(agentFn, diff, name) {
+  return agentFn(diff).catch(err => {
+    console.error(`${name} failed:`, err.message);
+    return null;
+  });
+}
 
 export async function runReviewPipeline(diff) {
 
-  const results = {
-    review: null,
-    risk: null,
-    security: null,
-    performance: null,
-    style: null
+  const [risk, security, performance, style, review, tests] = await Promise.all([
+    safeRun(analyzeRisk, diff, "Risk Agent"),
+    safeRun(analyzeSecurity, diff, "Security Agent"),
+    safeRun(analyzePerformance, diff, "Performance Agent"),
+    safeRun(analyzeStyle, diff, "Style Agent"),
+    safeRun(reviewPR, diff, "Review Agent"),
+    safeRun(generateTests, diff, "Test Generator Agent")
+  ]);
+
+  return {
+    risk,
+    security,
+    performance,
+    style,
+    review,
+    tests
   };
-
-  try {
-    results.risk = await analyzeRisk(diff);
-  } catch {}
-
-  try {
-    results.security = await analyzeSecurity(diff);
-  } catch {}
-
-  try {
-    results.performance = await analyzePerformance(diff);
-  } catch {}
-
-  try {
-    results.style = await analyzeStyle(diff);
-  } catch {}
-
-  try {
-    results.review = await reviewPR(diff);
-  } catch {}
-
-  return results;
 }

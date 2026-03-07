@@ -66,6 +66,11 @@ ${allImprovements.length ? allImprovements.map(i => `- ${i}`).join("\n") : "None
 
 ---
 
+### 🧪 Generated Unit Tests
+
+${generatedTests.length ? generatedTests.map(t => `Function: ${t.function_name} \`\`\`javascript${t.test_code}\`\`\``).join("\n") : "No tests generated"}
+
+
 _Reviewed by AI Multi-Agent System_
 `;
 }

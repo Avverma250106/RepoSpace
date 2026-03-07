@@ -54,6 +54,7 @@ async function reviewPR(prNumber) {
     if (result?.security) reviews.push(result.security);
     if (result?.performance) reviews.push(result.performance);
     if (result?.style) reviews.push(result.style);
+    if (result?.tests) reviews.push(result.tests);
   }
 
   if (!reviews.length) {
