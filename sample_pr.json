@@ -1,0 +1,9 @@
+{
+  "action": "opened",
+  "repository": {
+    "full_name": "test/repo"
+  },
+  "pull_request": {
+    "number": 1
+  }
+}
