@@ -5,8 +5,7 @@ import { formatReview } from "./src/utils/formatter.js";
 
 dotenv.config();
 
-const repo = process.env.GITHUB_REPO_FULL; 
-
+const repo = process.env.GITHUB_REPO_FULL;
 
 function splitDiffByFile(diff) {
   return diff
@@ -45,13 +44,16 @@ async function reviewPR(prNumber) {
 
     const result = await runReviewPipeline(file);
 
+    if (!result) continue;
+
     if (result?.risk) {
       console.log("Risk score:", result.risk.risk_score);
     }
 
-    if (result?.review) {
-      reviews.push(result.review);
-    }
+    if (result?.review) reviews.push(result.review);
+    if (result?.security) reviews.push(result.security);
+    if (result?.performance) reviews.push(result.performance);
+    if (result?.style) reviews.push(result.style);
   }
 
   if (!reviews.length) {
@@ -69,6 +71,7 @@ async function reviewPR(prNumber) {
   console.log("\n✅ Review posted to GitHub.");
 }
 
+// CLI entry point
 const PR_NUMBER = parseInt(process.argv[2]);
 
 if (!PR_NUMBER) {
