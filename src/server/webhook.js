@@ -33,7 +33,7 @@ export default async function webhookHandler(req, res) {
 
       const files = splitDiffByFile(diff);
 
-      const MAX_FILES = 3; // Limit AI calls
+      //const MAX_FILES = 3; // Limit AI calls
       const MAX_FILE_LENGTH = 5000; // Limit per file tokens
 
       const filesToReview = files.slice(0, MAX_FILES);

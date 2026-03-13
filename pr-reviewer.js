@@ -16,13 +16,13 @@ function splitDiffByFile(diff) {
 
 async function reviewPR(prNumber) {
 
-  console.log(`🤖 Reviewing PR #${prNumber} in ${repo}`);
+  console.log(`Reviewing PR #${prNumber} in ${repo}`);
 
   const diff = await getPRDiff(repo, prNumber);
 
   const MAX_TOTAL_DIFF_LENGTH = 15000;
   if (diff.length > MAX_TOTAL_DIFF_LENGTH) {
-    console.log("⚠ PR too large. Skipping.");
+    console.log("PR too large. Skipping.");
     return;
   }
 
@@ -38,7 +38,7 @@ async function reviewPR(prNumber) {
   for (const file of filesToReview) {
 
     if (file.length > MAX_FILE_LENGTH) {
-      console.log("⚠ Skipping large file");
+      console.log("Skipping large file");
       continue;
     }
 
@@ -69,7 +69,7 @@ async function reviewPR(prNumber) {
 
   await postPRComment(repo, prNumber, comment);
 
-  console.log("\n✅ Review posted to GitHub.");
+  console.log("\nReview posted to GitHub.");
 }
 
 // CLI entry point

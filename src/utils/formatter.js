@@ -10,6 +10,7 @@ export function formatReview(reviews) {
   const securityFindings = [];
   const performanceIssues = [];
   const styleSuggestions = [];
+  const testCases = [];
 
   for (const r of reviews) {
 
@@ -26,50 +27,50 @@ export function formatReview(reviews) {
     if (r.performance_issues) performanceIssues.push(...r.performance_issues);
 
     if (r.style_suggestions) styleSuggestions.push(...r.style_suggestions);
+
+    if(r.tests) testCases.push(...r.tests);
   }
 
   return `
-## 🤖 AI PR Review
+## AI PR Review
 
-### 📋 Summary
+### Summary
 ${summaries.length ? summaries.join("\n\n") : "No major concerns detected."}
 
 ---
 
-### 🐛 Bugs
+### Bugs
 ${allBugs.length ? allBugs.map(b => `- ${b}`).join("\n") : "None"}
 
 ---
 
-### 🔐 Security Issues
+### Security Issues
 ${allSecurityIssues.length ? allSecurityIssues.map(s => `- ${s}`).join("\n") : "None"}
 
 ---
 
-### 🛡 Security Findings
+### Security Findings
 ${securityFindings.length ? securityFindings.map(s => `- ${s}`).join("\n") : "None"}
 
 ---
 
-### ⚡ Performance Issues
+### Performance Issues
 ${performanceIssues.length ? performanceIssues.map(p => `- ${p}`).join("\n") : "None"}
 
 ---
 
-### 🎨 Style Suggestions
+### Style Suggestions
 ${styleSuggestions.length ? styleSuggestions.map(s => `- ${s}`).join("\n") : "None"}
 
 ---
 
-### 🚀 Improvements
+### Improvements
 ${allImprovements.length ? allImprovements.map(i => `- ${i}`).join("\n") : "None"}
 
 ---
 
-### 🧪 Generated Unit Tests
-
-${generatedTests.length ? generatedTests.map(t => `Function: ${t.function_name} \`\`\`javascript${t.test_code}\`\`\``).join("\n") : "No tests generated"}
-
+### Test Cases
+${testCases.length ? testCases.map(t => `**${t.function_name}**\`\`\`js${t.test_code}\`\`\``).join("\n\n"): "None"}
 
 _Reviewed by AI Multi-Agent System_
 `;

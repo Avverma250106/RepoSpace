@@ -39,7 +39,12 @@ export async function generateTests(diff) {
 
     if (!text) return null;
 
-    return JSON.parse(text);
+    const clean = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return JSON.parse(clean);
 
   } catch (err) {
     console.error("Test generator agent failed:", err.message);

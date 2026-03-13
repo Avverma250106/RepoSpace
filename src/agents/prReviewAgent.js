@@ -6,7 +6,9 @@ const prReviewAgent = new Agent({
   instructions: `
 You are a senior software engineer reviewing a GitHub pull request diff.
 
-Return ONLY valid JSON in this format:
+Return RAW JSON only. Do NOT wrap JSON in markdown.
+
+Format:
 
 {
   "summary": "string",
@@ -21,7 +23,7 @@ Return ONLY valid JSON in this format:
 export async function reviewPR(diff) {
 
   if (process.env.USE_MOCK_AI === "true") {
-    console.log("🧪 MOCK MODE: Skipping AI review");
+    console.log("MOCK MODE: Skipping AI review");
 
     return {
       summary: "Mock summary of PR.",
@@ -32,9 +34,9 @@ export async function reviewPR(diff) {
   }
 
   try {
+
     const result = await run(prReviewAgent, diff);
 
-    // Extract message text from agent output
     const message = result.output?.[0];
     const text = message?.content?.[0]?.text;
 
@@ -45,8 +47,12 @@ export async function reviewPR(diff) {
       return null;
     }
 
-    const parsed = JSON.parse(text);
-    return parsed;
+    const clean = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return JSON.parse(clean);
 
   } catch (err) {
     console.error("PR review agent failed:", err.message);

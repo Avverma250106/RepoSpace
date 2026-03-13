@@ -5,7 +5,7 @@ import axios from "axios";
 export async function getPRDiff(repo, prNumber) {
 
   if (process.env.USE_MOCK_DIFF === "true") {
-    console.log("🧪 MOCK MODE: Using fake PR diff");
+    console.log("MOCK MODE: Using fake PR diff");
 
     return `
 diff --git a/app.js b/app.js
@@ -32,7 +32,7 @@ index 123..456 100644
 }
 export async function postPRComment(repo, prNumber, comment) {
   if (process.env.USE_MOCK_AI === "true") {
-    console.log("🧪 MOCK MODE: Skipping GitHub comment");
+    console.log("MOCK MODE: Skipping GitHub comment");
     console.log("----- COMMENT START -----");
     console.log(comment);
     console.log("----- COMMENT END -----");
