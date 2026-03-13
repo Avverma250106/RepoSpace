@@ -28,7 +28,6 @@ async function reviewPR(prNumber) {
 
   const files = splitDiffByFile(diff);
 
-  const MAX_FILES = 3;
   const MAX_FILE_LENGTH = 5000;
 
   const filesToReview = files.slice(0, MAX_FILES);

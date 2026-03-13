@@ -16,9 +16,9 @@ export default async function webhookHandler(req, res) {
   const event = req.headers["x-github-event"];
   const payload = req.body;
 
-  if (event === "pull_request" && payload.action === "opened") {
+  if (event === "pull_request" && (payload.action === "opened" || payload.action === "synchronize")) {
     try {
-      console.log("📦 Pull request opened");
+      console.log("Pull request opened");
 
       const repo = payload.repository.full_name;
       const prNumber = payload.pull_request.number;
@@ -33,7 +33,7 @@ export default async function webhookHandler(req, res) {
 
       const files = splitDiffByFile(diff);
 
-      //const MAX_FILES = 3; // Limit AI calls
+      const MAX_FILES = 3; 
       const MAX_FILE_LENGTH = 5000; // Limit per file tokens
 
       const filesToReview = files.slice(0, MAX_FILES);
@@ -72,7 +72,9 @@ export default async function webhookHandler(req, res) {
 
       const comment = formatReview(reviews);
 
+      console.log("\nGenerated Review Comment:\n");
       await postPRComment(repo, prNumber, comment);
+      console.log("Comment posted to GitHub.");
 
     } catch (err) {
       console.error("Error processing PR:", err.message);
