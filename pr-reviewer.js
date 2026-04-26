@@ -30,6 +30,8 @@ async function reviewPR(prNumber) {
 
   const MAX_FILE_LENGTH = 5000;
 
+  const MAX_FILES = 5;
+
   const filesToReview = files.slice(0, MAX_FILES);
 
   const reviews = [];
