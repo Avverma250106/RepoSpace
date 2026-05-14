@@ -50,12 +50,12 @@ ${allSecurityIssues.length ? allSecurityIssues.map(s => `- ${s}`).join("\n") : "
 ---
 
 ### Security Findings
-${securityFindings.length ? securityFindings.map(s => `- ${s}`).join("\n") : "None"}
-
+// ${securityFindings.length ? securityFindings.map(s => `- ${s}`).join("\n") : "None"}
+${securityFindings.length ? securityFindings.map(s => `- **[${s.severity?.toUpperCase()}]** ${s.issue}\n  > Fix: ${s.fix}`) : "None"}
 ---
 
 ### Performance Issues
-${performanceIssues.length ? performanceIssues.map(p => `- ${p}`).join("\n") : "None"}
+${performanceIssues.length ? performanceIssues.map(p => `- **${p.impact}** — ${p.issue}\n  > Fix: ${p.fix}`) : "None"}
 
 ---
 

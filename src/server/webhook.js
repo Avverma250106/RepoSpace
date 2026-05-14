@@ -4,6 +4,7 @@ import { getPRDiff, postPRComment } from "../services/githubService.js";
 //import { reviewPR } from "../agents/prReviewAgent.js";
 import { formatReview } from "../utils/formatter.js";
 import { runReviewPipeline } from "../orchestrator/reviewPipeline.js";
+import crypto from "crypto";
 
 function splitDiffByFile(diff) {
   return diff
@@ -12,7 +13,19 @@ function splitDiffByFile(diff) {
     .map(file => "diff --git" + file);
 }
 
+function verifySignature(req) {
+  const sig = req.headers["x-hub-signature-256"];
+  if (!sig) return false;
+  const expected = "sha256=" + crypto
+    .createHmac("sha256", process.env.WEBHOOK_SECRET)
+    .update(JSON.stringify(req.body))
+    .digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+}
+
+
 export default async function webhookHandler(req, res) {
+  // if (!verifySignature(req)) return res.sendStatus(401);
   const event = req.headers["x-github-event"];
   const payload = req.body;
 
