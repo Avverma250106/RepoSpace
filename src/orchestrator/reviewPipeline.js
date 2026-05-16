@@ -3,7 +3,7 @@ import { analyzeRisk } from "../agents/riskAgent.js";
 import { analyzeSecurity } from "../agents/securityAgent.js";
 import { analyzePerformance } from "../agents/performanceAgent.js";
 import { analyzeStyle } from "../agents/styleAgent.js";
-import { generateTests } from "../agents/testCaseAgent.js";
+// import { generateTests } from "../agents/testCaseAgent.js";
 
 function safeRun(agentFn, diff, name) {
   return agentFn(diff).catch(err => {
@@ -20,7 +20,7 @@ export async function runReviewPipeline(diff) {
     safeRun(analyzePerformance, diff, "Performance Agent"),
     safeRun(analyzeStyle, diff, "Style Agent"),
     safeRun(reviewPR, diff, "Review Agent"),
-    safeRun(generateTests, diff, "Test Generator Agent")
+    // safeRun(generateTests, diff, "Test Generator Agent")
   ]);
 
   return {
@@ -29,6 +29,5 @@ export async function runReviewPipeline(diff) {
     performance,
     style,
     review,
-    tests
   };
 }

@@ -1,77 +1,116 @@
-// src/utils/formatter.js
+// Replace the entire formatReview function with this concise version.
 
 export function formatReview(reviews) {
+  const normalize = (text) =>
+    String(text || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+  const uniqueStrings = (items) => {
+    const seen = new Set();
+    const result = [];
+
+    for (const item of items || []) {
+      if (!item) continue;
+
+      const value = String(item).trim();
+      const key = normalize(value);
+
+      if (!value || seen.has(key)) continue;
+
+      seen.add(key);
+      result.push(value);
+    }
+
+    return result;
+  };
+
+  const extractSeverity = (text) => {
+    const match = String(text).match(/\[(critical|high|medium|low)\]/i);
+    return match ? match[1].toUpperCase() : "MEDIUM";
+  };
+
+  const severityOrder = {
+    CRITICAL: 0,
+    HIGH: 1,
+    MEDIUM: 2,
+    LOW: 3
+  };
+
+  const sortBySeverity = (items) =>
+    [...items].sort(
+      (a, b) =>
+        severityOrder[extractSeverity(a)] -
+        severityOrder[extractSeverity(b)]
+    );
 
   const summaries = [];
-  const allBugs = [];
-  const allSecurityIssues = [];
-  const allImprovements = [];
-
+  const bugs = [];
+  const improvements = [];
   const securityFindings = [];
-  const performanceIssues = [];
-  const styleSuggestions = [];
-  const testCases = [];
 
   for (const r of reviews) {
-
     if (r.summary) summaries.push(r.summary);
-
-    if (r.bugs) allBugs.push(...r.bugs);
-
-    if (r.security_issues) allSecurityIssues.push(...r.security_issues);
-
-    if (r.improvements) allImprovements.push(...r.improvements);
-
-    if (r.security_findings) securityFindings.push(...r.security_findings);
-
-    if (r.performance_issues) performanceIssues.push(...r.performance_issues);
-
-    if (r.style_suggestions) styleSuggestions.push(...r.style_suggestions);
-
-    if(r.tests) testCases.push(...r.tests);
+    if (Array.isArray(r.bugs)) bugs.push(...r.bugs);
+    if (Array.isArray(r.improvements)) improvements.push(...r.improvements);
+    if (Array.isArray(r.security_issues)) {
+      securityFindings.push(...r.security_issues);
+    }
   }
 
-  return `
-## AI PR Review
+  const summary =
+    uniqueStrings(summaries)[0] || "No major concerns detected.";
 
-### Summary
-${summaries.length ? summaries.join("\n\n") : "No major concerns detected."}
+  const allIssues = sortBySeverity(
+    uniqueStrings([...bugs, ...securityFindings])
+  );
 
----
+  const topIssues = allIssues.slice(0, 8);
+  const topFixes = uniqueStrings(improvements).slice(0, 6);
 
-### Bugs
-${allBugs.length ? allBugs.map(b => `- ${b}`).join("\n") : "None"}
+  const count = (severity) =>
+    topIssues.filter(
+      (issue) => extractSeverity(issue) === severity
+    ).length;
 
----
+  const sections = [];
 
-### Security Issues
-${allSecurityIssues.length ? allSecurityIssues.map(s => `- ${s}`).join("\n") : "None"}
+  sections.push("## AI Code Review");
+  sections.push(summary);
 
----
+  if (topIssues.length > 0) {
+    sections.push(
+      [
+        "### Risk Overview",
+        `- Critical: ${count("CRITICAL")}`,
+        `- High: ${count("HIGH")}`,
+        `- Medium: ${count("MEDIUM")}`,
+        `- Low: ${count("LOW")}`
+      ].join("\n")
+    );
 
-### Security Findings
-// ${securityFindings.length ? securityFindings.map(s => `- ${s}`).join("\n") : "None"}
-${securityFindings.length ? securityFindings.map(s => `- **[${s.severity?.toUpperCase()}]** ${s.issue}\n  > Fix: ${s.fix}`) : "None"}
----
+    sections.push(
+      "### Key Findings\n" +
+        topIssues.map((issue) => `- ${issue}`).join("\n")
+    );
+  }
 
-### Performance Issues
-${performanceIssues.length ? performanceIssues.map(p => `- **${p.impact}** — ${p.issue}\n  > Fix: ${p.fix}`) : "None"}
+  if (topFixes.length > 0) {
+    sections.push(
+      "### Recommended Fixes\n" +
+        topFixes.map((fix) => `- ${fix}`).join("\n")
+    );
+  }
 
----
+  if (topIssues.length > 0) {
+    sections.push(
+      "### Auto-Fix Available\n" +
+        "Add the label `apply-ai-fixes` to automatically apply safe fixes."
+    );
+  }
 
-### Style Suggestions
-${styleSuggestions.length ? styleSuggestions.map(s => `- ${s}`).join("\n") : "None"}
+  sections.push("---\nReviewed by RepoSpace AI");
 
----
-
-### Improvements
-${allImprovements.length ? allImprovements.map(i => `- ${i}`).join("\n") : "None"}
-
----
-
-### Test Cases
-${testCases.length ? testCases.map(t => `**${t.function_name}**\`\`\`js${t.test_code}\`\`\``).join("\n\n"): "None"}
-
-_Reviewed by AI Multi-Agent System_
-`;
+  return sections.join("\n\n");
 }
