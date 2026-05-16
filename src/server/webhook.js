@@ -206,7 +206,7 @@ export default async function webhookHandler(req, res) {
 
   if (
     event === "pull_request" &&
-    (payload.action === "opened" || payload.action === "synchronize")
+    (payload.action === "opened" || payload.action === "synchronize" || payload.action === "reopened")
   ) {
     res.sendStatus(200);
     const repo     = payload.repository.full_name;
