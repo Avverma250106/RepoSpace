@@ -20,7 +20,7 @@ function buildRiskSection(risk) {
   if (!risk?.risk_score) return "";
 
   const score = risk.risk_score;
-  .
+  
   const label =
     score >= 8 ? "High" :
     score >= 5 ? "Medium" : "Low";
