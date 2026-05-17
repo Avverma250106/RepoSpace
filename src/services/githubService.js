@@ -98,24 +98,31 @@ export async function updateFile(repo, path, content, message, branch, sha) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NEW — getLatestCommitSha
-//
-// Called immediately after updateFile() succeeds to get the SHA of the commit
-// we just created. We read the branch HEAD via the Git refs API — this is the
-// fastest and most reliable way since it reflects pushes instantly.
-//
-// The SHA is then handed to notifyCommit() which broadcasts it over SSE so the
-// browser can open github.com/{repo}/commit/{sha} automatically.
-//
-// @param {string} repo    - "owner/repo"
-// @param {string} branch  - branch name, e.g. "feature/add-login"
-// @returns {Promise<string>} full 40-char commit SHA
-// ─────────────────────────────────────────────────────────────────────────────
+export async function createPRReview(repo, prNumber, review) {
+  const [owner, repoName] = repo.split("/");
+
+  const url =
+    `https://api.github.com/repos/${owner}/${repoName}` +
+    `/pulls/${prNumber}/reviews`;
+
+  const response = await axios.post(
+    url,
+    review,
+    { headers: githubHeaders() }
+  );
+
+  return response.data;
+}
+
 export async function getLatestCommitSha(repo, branch) {
   const res = await axios.get(
     `https://api.github.com/repos/${repo}/git/refs/heads/${encodeURIComponent(branch)}`,
     { headers: githubHeaders() }
   );
   return res.data.object.sha;
+}
+
+export async function getPRHeadSha(repo, prNumber) {
+  const pr = await getPRDetails(repo, prNumber);
+  return pr.head.sha;
 }

@@ -12,6 +12,7 @@ import {
 import { runProgressiveReview } from "../utils/progressiveReview.js";
 import { generateFix }          from "../agents/fixAgent.js";
 import { openCommitInBrave }    from "../browser/commitViewer.js";
+import { postInlineReview } from "../utils/postInlineReview.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PIPELINE 1 — Progressive PR review
@@ -49,8 +50,17 @@ async function handlePRReview(repo, prNumber) {
     return;
   }
 
+  // Existing progressive review
   for (const file of filesToReview) {
     await runProgressiveReview(repo, prNumber, file);
+  }
+
+  // NEW: Post inline comments directly on changed lines
+  try {
+    await postInlineReview(repo, prNumber, diff);
+    console.log("[review] Inline comments posted.");
+  } catch (err) {
+    console.error("[review] Inline review failed:", err.message);
   }
 }
 
