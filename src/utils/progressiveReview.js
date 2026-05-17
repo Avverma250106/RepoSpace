@@ -1,19 +1,4 @@
 // src/utils/progressiveReview.js
-//
-// This module owns the entire "live typing" illusion.
-//
-// CONCEPT:
-//   Instead of running all agents then posting one comment at the end, we:
-//     1. Create a placeholder comment immediately (before any agent runs).
-//     2. Run agents one by one.
-//     3. After each agent finishes, append its section to the comment body
-//        and call updatePRComment so GitHub users see the comment grow.
-//     4. Add a short delay between updates so the growth is visible.
-//
-// WHY A SEPARATE MODULE:
-//   webhook.js was already complex. Pulling the staged-update logic here keeps
-//   each file focused on one responsibility and makes the stages easy to
-//   reorder, add to, or remove without touching the webhook router.
 
 import { createPRComment, updatePRComment } from "../services/githubService.js";
 import { reviewPR }          from "../agents/prReviewAgent.js";
@@ -23,19 +8,8 @@ import { analyzeStyle }      from "../agents/styleAgent.js";
 import { analyzeRisk }       from "../agents/riskAgent.js";
 import { generateTests }     from "../agents/testCaseAgent.js";
 
-// How long (ms) to wait between comment updates.
-// 1500 ms gives a comfortable "typing" cadence without feeling sluggish.
-const UPDATE_DELAY = 1500;
-
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Section builders
-//
-// Each function takes the raw agent output and returns a markdown string.
-// Returning an empty string means "nothing to show" — the caller skips
-// the update entirely so the comment doesn't flash with empty sections.
-// ─────────────────────────────────────────────────────────────────────────────
 
 function buildSummarySection(review) {
   if (!review?.summary) return "";
@@ -46,8 +20,7 @@ function buildRiskSection(risk) {
   if (!risk?.risk_score) return "";
 
   const score = risk.risk_score;
-
-  // Derive a text label from the numeric score (assumes 1-10 scale).
+  .
   const label =
     score >= 8 ? "High" :
     score >= 5 ? "Medium" : "Low";
@@ -66,7 +39,6 @@ function buildRiskSection(risk) {
 }
 
 function buildRiskBar(score) {
-  // Visual 1–10 bar using block characters, e.g. "████████░░ 8/10"
   const filled = Math.round(Math.max(0, Math.min(10, score)));
   return "█".repeat(filled) + "░".repeat(10 - filled) + ` ${score}/10`;
 }
@@ -75,13 +47,13 @@ function buildFindingsSection(review, security, performance) {
   const parts = [];
 
   // Bugs
-  const bugs = review?.bugs ?? [];
+  const bugs = (review?.bugs ?? []).slice(0,5);
   if (bugs.length) {
     parts.push(`**Bugs**\n${bugs.map(b => `- ${b}`).join("\n")}`);
   }
 
   // Security
-  const findings = security?.security_findings ?? [];
+  const findings = (security?.security_findings ?? []).slice(0,5);
   if (findings.length) {
     const lines = findings.map(f => {
       if (typeof f === "string") return `- ${f}`;
@@ -92,7 +64,7 @@ function buildFindingsSection(review, security, performance) {
   }
 
   // Performance
-  const perf = performance?.performance_issues ?? [];
+  const perf = (performance?.performance_issues ?? []).slice(0,5);
   if (perf.length) {
     const lines = perf.map(p => {
       if (typeof p === "string") return `- ${p}`;
@@ -115,7 +87,7 @@ function buildFixesSection(review, security, performance, style) {
   }
 
   // Security fixes
-  const findings = security?.security_findings ?? [];
+  const findings = (security?.security_findings ?? []).slice(0,5);
   const secFixes = findings.filter(f => f.fix);
   if (secFixes.length) {
     const lines = secFixes.map(f =>
@@ -125,7 +97,7 @@ function buildFixesSection(review, security, performance, style) {
   }
 
   // Performance fixes
-  const perf = performance?.performance_issues ?? [];
+  const perf = (performance?.performance_issues ?? []).slice(0,5);
   const perfFixes = perf.filter(p => p.fix);
   if (perfFixes.length) {
     const lines = perfFixes.map(p =>
@@ -135,7 +107,7 @@ function buildFixesSection(review, security, performance, style) {
   }
 
   // Style suggestions
-  const suggestions = style?.style_suggestions ?? [];
+  const suggestions = (style?.style_suggestions ?? []).slice(0,5);
   if (suggestions.length) {
     const lines = suggestions.map(s => {
       if (typeof s === "string") return `- ${s}`;
@@ -149,7 +121,7 @@ function buildFixesSection(review, security, performance, style) {
 }
 
 function buildTestsSection(tests) {
-  const list = tests?.tests ?? [];
+  const list = (tests?.tests ?? []).slice(0,5);
   if (!list.length) return "";
 
   const blocks = list.map(t =>
@@ -174,13 +146,6 @@ function buildFooter(totalIssues) {
   return `---\n*${issueText} Reviewed by RepoSpace AI.*`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Comment body assembler
-//
-// Takes all sections collected so far and assembles the full comment body.
-// Sections that are empty strings are filtered out so we never get blank
-// headings in the comment mid-stream.
-// ─────────────────────────────────────────────────────────────────────────────
 
 function assembleBody(sections) {
   return [
@@ -191,16 +156,6 @@ function assembleBody(sections) {
     .join("\n\n");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main export — runProgressiveReview
-//
-// Orchestrates the full pipeline for a single file diff.
-// Returns nothing — all output goes to GitHub via comment updates.
-//
-// @param {string} repo
-// @param {number} prNumber
-// @param {string} diff  — the file diff to analyse
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function runProgressiveReview(repo, prNumber, diff) {
 
