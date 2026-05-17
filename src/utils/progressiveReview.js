@@ -8,6 +8,8 @@ import { analyzeStyle }      from "../agents/styleAgent.js";
 import { analyzeRisk }       from "../agents/riskAgent.js";
 import { generateTests }     from "../agents/testCaseAgent.js";
 
+const UPDATE_DELAY = 600;
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 
@@ -20,7 +22,7 @@ function buildRiskSection(risk) {
   if (!risk?.risk_score) return "";
 
   const score = risk.risk_score;
-  
+
   const label =
     score >= 8 ? "High" :
     score >= 5 ? "Medium" : "Low";
