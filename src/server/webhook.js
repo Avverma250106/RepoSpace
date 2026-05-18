@@ -10,8 +10,8 @@ import {
 } from "../services/githubService.js";
 
 import { runProgressiveReview } from "../utils/progressiveReview.js";
-import { generateFix }          from "../agents/fixAgent.js";
-import { openCommitInBrave }    from "../browser/commitViewer.js";
+import { generateFix } from "../agents/fixAgent.js";
+import { openCommitInBrave } from "../browser/commitViewer.js";
 import { postInlineReview } from "../utils/postInlineReview.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,21 +138,18 @@ export async function handleAutoFix(repo, prNumber, branch) {
       continue;
     }
 
-    const { original_code, fixed_code, reason } = fix;
+    const { fixed_file, reason } = fix;
 
-    if (!original_code || !fixed_code) {
+    if (!fixed_file || !reason) {
       skippedFiles.push({ filename, reason: "Incomplete fix returned." });
       continue;
     }
 
-    if (!fileContent.includes(original_code)) {
-      skippedFiles.push({ filename, reason: "Fix snippet not found in file." });
-      continue;
-    }
+    const updatedContent = fixed_file;
 
-    const updatedContent = fileContent.replace(original_code, fixed_code);
-    if (updatedContent === fileContent) {
-      skippedFiles.push({ filename, reason: "Replace produced no change." });
+    // Skip if the generated file is identical to the current file
+    if (updatedContent.trim() === fileContent.trim()) {
+      skippedFiles.push({ filename, reason: "No changes generated." });
       continue;
     }
 
@@ -183,7 +180,7 @@ export async function handleAutoFix(repo, prNumber, branch) {
   }
 
   // Post summary comment
-  const fixLines  = appliedFixes.map(f => `- \`${f.filename}\` — ${f.reason}`);
+  const fixLines = appliedFixes.map(f => `- \`${f.filename}\` — ${f.reason}`);
   const skipLines = skippedFiles.map(f => `- \`${f.filename}\` — ${f.reason}`);
 
   const body = [
@@ -211,7 +208,7 @@ export async function handleAutoFix(repo, prNumber, branch) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function webhookHandler(req, res) {
-  const event   = req.headers["x-github-event"];
+  const event = req.headers["x-github-event"];
   const payload = req.body;
 
   if (
@@ -219,7 +216,7 @@ export default async function webhookHandler(req, res) {
     (payload.action === "opened" || payload.action === "synchronize" || payload.action === "reopened")
   ) {
     res.sendStatus(200);
-    const repo     = payload.repository.full_name;
+    const repo = payload.repository.full_name;
     const prNumber = payload.pull_request.number;
     try { await handlePRReview(repo, prNumber); }
     catch (err) { console.error("[webhook] Review error:", err.message); }
@@ -232,9 +229,9 @@ export default async function webhookHandler(req, res) {
     payload.label?.name === "apply-ai-fixes"
   ) {
     res.sendStatus(200);
-    const repo     = payload.repository.full_name;
+    const repo = payload.repository.full_name;
     const prNumber = payload.pull_request.number;
-    const branch   = payload.pull_request.head.ref;
+    const branch = payload.pull_request.head.ref;
     console.log(`[webhook] apply-ai-fixes label on PR #${prNumber}`);
     try { await handleAutoFix(repo, prNumber, branch); }
     catch (err) { console.error("[webhook] Autofix error:", err.message); }
