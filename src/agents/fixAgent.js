@@ -10,112 +10,108 @@ const openai = new OpenAI({
 });
 
 /**
- * Asks the LLM to generate a single meaningful fix for a changed file.
- * The fix may range from a one-line change up to a full function replacement
- * or algorithm-level refactor — whatever the diff actually calls for.
+ * Generates a complete corrected version of a file.
+ *
+ * Instead of returning a small patch:
+ * {
+ *   original_code,
+ *   fixed_code,
+ *   reason
+ * }
+ *
+ * this agent returns the full corrected file:
+ * {
+ *   fixed_file,
+ *   reason
+ * }
+ *
+ * This approach is much more reliable for:
+ * - Buggy algorithms (e.g. Dijkstra)
+ * - Large refactors
+ * - Bubble Sort -> std::sort
+ * - Multi-line security fixes
  *
  * @param {object} params
- * @param {string} params.filename       - e.g. "src/sort.cpp"
- * @param {string} params.patch          - raw unified diff from the GitHub API
- * @param {string} [params.fileContent]  - full current file contents (strongly recommended)
+ * @param {string} params.filename
+ * @param {string} params.patch
+ * @param {string} [params.fileContent]
  *
- * @returns {Promise<{original_code: string, fixed_code: string, reason: string} | null>}
+ * @returns {Promise<{fixed_file: string, reason: string} | null>}
  */
-export async function generateFix({ filename, patch, fileContent = "" }) {
-
+export async function generateFix({
+  filename,
+  patch,
+  fileContent = ""
+}) {
   const systemPrompt = `
-You are a senior software engineer performing automated code fixes as part of a CI/CD pipeline.
-Your job is to implement the single most impactful improvement visible in the diff — whether that
-is a one-line security fix, a block-level refactor, or a complete algorithm replacement.
+You are a senior software engineer performing automated code fixes.
 
-You are explicitly authorised to:
-- Replace a single line
-- Replace a block of code (e.g. a loop, a conditional, an initialisation section)
-- Replace an entire function with a better implementation
-- Replace an inefficient algorithm with a correct, idiomatic, and performant one
-  (e.g. Bubble Sort → std::sort, manual O(n²) search → hash map lookup)
-- Implement any performance or correctness improvement clearly suggested by the diff
+Your task is to implement the single most impactful improvement visible in the pull request.
 
-You are NOT allowed to:
-- Change function signatures, public interfaces, or exported API shapes
-- Modify code outside the scope of the single improvement you are making
-- Introduce new dependencies that are not already present in the file
-- Return prose, markdown, or anything other than a single valid JSON object
+You are explicitly allowed to:
+- Fix functional bugs
+- Fix security vulnerabilities
+- Correct logic errors
+- Improve performance
+- Replace an inefficient algorithm with a better one
+- Rewrite an entire function
+- Rewrite the entire file when necessary
 
-You always return valid JSON and nothing else.
+Examples:
+- Replace Bubble Sort with std::sort
+- Correct Dijkstra's algorithm
+- Replace hardcoded secrets with environment variables
+- Fix SQL injection using parameterized queries
+
+Rules:
+- Preserve public interfaces and function signatures.
+- Return the complete corrected file.
+- Do not return partial snippets.
+- Return only valid JSON.
+- If no improvement is needed, return the original file unchanged.
 `.trim();
 
   const userPrompt = `
-You are reviewing the following pull request file change.
+You are reviewing the following file.
 
 FILE: ${filename}
 
-GIT DIFF (what changed in this PR):
+GIT DIFF:
 \`\`\`diff
 ${patch}
 \`\`\`
 
-${fileContent
-    ? `CURRENT FILE CONTENTS (full file as it exists on the branch right now):
+CURRENT FILE CONTENTS:
 \`\`\`
 ${fileContent}
-\`\`\``
-    : "Note: full file contents were not available."
-  }
+\`\`\`
 
-Identify the single most impactful improvement visible in this diff.
-This may be a security fix, a bug fix, an algorithm replacement, or a performance refactor.
-
-Return a JSON object with EXACTLY these three fields:
+Return a JSON object with EXACTLY these two fields:
 
 {
-  "original_code": "<verbatim substring from the current file — may be one line, a block, or an entire function>",
-  "fixed_code":    "<complete drop-in replacement for original_code>",
-  "reason":        "<one sentence: what the problem is and what the fix does>"
+  "fixed_file": "<the complete corrected file contents>",
+  "reason": "<one sentence explaining the fix>"
 }
 
-Rules you MUST follow:
+Rules:
+- fixed_file must contain the full corrected file.
+- Preserve the same function signatures and public interfaces.
+- Implement the single most impactful improvement completely.
+- Entire function and file rewrites are allowed.
+- If no fix is needed, return the original file unchanged.
 
-ORIGINAL CODE:
-- Must be a verbatim substring copied exactly from the current file contents above.
-- May be as short as one line or as long as an entire function — whatever is needed.
-- Must include the complete block you intend to replace: if you are replacing a function,
-  include the full function from its opening signature to its closing brace.
-- Do not truncate, paraphrase, or summarise — copy it character-for-character including
-  all whitespace and indentation exactly as it appears in the file.
-
-FIXED CODE:
-- Must be a complete, correct, drop-in replacement for original_code.
-- Must preserve the same indentation level as original_code.
-- Must preserve the existing function signature, return type, and public interface.
-- For algorithm replacements (e.g. Bubble Sort → std::sort), provide the full
-  working implementation — not a placeholder or comment.
-- For security fixes, apply the complete safe pattern (e.g. parameterized queries,
-  proper escaping) — not just a comment saying "fix this".
-
-SCOPE:
-- Fix one thing. The most important thing. Do not bundle multiple unrelated changes.
-- If the diff contains a performance problem AND a security problem, fix the security
-  problem. If there is only a performance problem, fix that fully.
-
-NO FIX:
-- If there is genuinely nothing to improve, return:
-  {"original_code": "", "fixed_code": "", "reason": "No fix needed."}
-
-Return ONLY the JSON object. No markdown fences, no prose, no extra keys.
+Return ONLY the JSON object.
 `.trim();
 
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0,
-      // Increased from 1024 — large refactors (e.g. full function replacements)
-      // need more room. 3000 covers even sizeable algorithm rewrites.
-      max_tokens: 3000,
+      max_tokens: 6000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt   }
+        { role: "user", content: userPrompt }
       ]
     });
 
@@ -129,33 +125,40 @@ Return ONLY the JSON object. No markdown fences, no prose, no extra keys.
       return null;
     }
 
-    const hasOriginal = typeof fix.original_code === "string" && fix.original_code.trim() !== "";
-    const hasFixed    = typeof fix.fixed_code    === "string" && fix.fixed_code.trim()    !== "";
-    const hasReason   = typeof fix.reason        === "string";
+    const hasFixedFile =
+      typeof fix.fixed_file === "string" &&
+      fix.fixed_file.trim() !== "";
 
-    if (!hasOriginal || !hasFixed || !hasReason) {
-      console.log(`[fixAgent] No actionable fix for ${filename}: ${fix.reason ?? "no reason given"}`);
-      return null;
-    }
+    const hasReason =
+      typeof fix.reason === "string";
 
-    // Hard guard: original_code must exist verbatim in the current file.
-    // This is especially important for large replacements — if the model
-    // reformatted or paraphrased even a single character, the replacement
-    // would silently fail or corrupt the file.
-    if (fileContent && !fileContent.includes(fix.original_code)) {
-      console.warn(
-        `[fixAgent] original_code not found verbatim in ${filename} — skipping.\n` +
-        `  First 120 chars: ${fix.original_code.slice(0, 120)}`
+    if (!hasFixedFile || !hasReason) {
+      console.log(
+        `[fixAgent] No actionable fix for ${filename}: ${
+          fix.reason ?? "no reason given"
+        }`
       );
       return null;
     }
 
-    console.log(`[fixAgent] Fix for ${filename} (${fix.original_code.split("\n").length} line(s) → ${fix.fixed_code.split("\n").length} line(s)): ${fix.reason}`);
+    // Skip if the generated file is identical to the current file.
+    if (fileContent && fix.fixed_file === fileContent) {
+      console.log(
+        `[fixAgent] No changes generated for ${filename}.`
+      );
+      return null;
+    }
+
+    console.log(
+      `[fixAgent] Generated full-file fix for ${filename}: ${fix.reason}`
+    );
 
     return fix;
-
   } catch (err) {
-    console.error(`[fixAgent] OpenAI call failed for ${filename}:`, err.message);
+    console.error(
+      `[fixAgent] OpenAI call failed for ${filename}:`,
+      err.message
+    );
     return null;
   }
 }
